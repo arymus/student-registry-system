@@ -7,5 +7,6 @@
 # Exclude main.c
 !**/main.c
 
-# C output file
-**/a.out
+# C output files
+**/*.out
+**/*.exe

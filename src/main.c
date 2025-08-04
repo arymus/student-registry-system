@@ -10,7 +10,7 @@ typedef struct Student { // Typedef allows you to add an alias to a struct
     int id; // Member
 } student; // Alias
 student database[50]; // Create a database to hold an array of student structures
-int student_count = 0; // Initialize a variable to track the amount of students
+int student_count = 1; // Initialize a variable to track the amount of students (starts at 1 so the first ID is 1)
 
 void str_slice(char *str, const char *substr) { // Function to remove a substring from a string
     char *match; // Pointer to hold the value of strstr()
@@ -67,47 +67,68 @@ student add_student(char *fname, char *lname, int age) {
 int main() {
     printf("Student Registry System\n");
 
-    // Prompts and memory allocation for stdin handling
-    printf("Enter student first name: ");
-    char *fname = malloc(256); // Allocate 256 bytes of memory for the first name
-    if (fname == NULL) return 1; // If fname is NULL, malloc() failed. Therefore, return 1 for error
-    fgets(fname, 256, stdin); // Read 256 bytes from stdin and write it to fname
+    // Allocate memory to hold stdin data
+    char *fname = malloc(256);
+    char *lname = malloc(256);
+    char *age = malloc(256);
+    char *add_another = malloc(5); // 5 bytes because the longest answer is "yes" + \n added by enter/return key + null terminator
 
-    printf("Enter student last name: ");
-    char *lname = malloc(256); // Allocate 256 bytes of memory for the last name
-    if (lname == NULL) return 1; // Return 1 if malloc() fails
-    fgets(lname, 256, stdin); // Write the last name from stdin to lname
+    // While true (runs infinitely)
+    while (1) {
 
-    printf("Enter student age: "); // Extra newline to seperate the prompts from the output
-    char *age = malloc(256); // Allocate 256 bytes of memory for the age
-    if (age == NULL) return 1; // Return 1 if malloc() fails
-    fgets(age, 256, stdin); // Write the age from stdin to age
+        // Prompts and memory allocation for stdin handling
+        printf("Enter student first name: ");
+        if (fname == NULL) return 1; // If fname is NULL, malloc() failed. Therefore, return 1 for error
+        fgets(fname, 256, stdin); // Read 256 bytes from stdin and write it to fname
 
-    printf("\n"); // Print out a newline
+        printf("Enter student last name: ");
+        if (lname == NULL) return 1; // Return 1 if malloc() fails
+        fgets(lname, 256, stdin); // Write the last name from stdin to lname
 
-    str_slice(fname, " "); str_slice(lname, " "); str_slice(age, " "); // Remove spaces from the name and age   
-    str_slice(fname, "\n"); str_slice(lname, "\n"); str_slice(age, "\n"); // Remove all newline characters from the name and age
+        printf("Enter student age: "); // Extra newline to seperate the prompts from the output
+        if (age == NULL) return 1; // Return 1 if malloc() fails
+        fgets(age, 256, stdin); // Write the age from stdin to age
 
-    int age_int = atoi(age); // Convert age from a string to an integer
+        printf("\n"); // Print out a newline
 
-    // If the length of age isn't 0, or if age_int returns 0 and the inputted age isn't 0
-    if (strlen(age) == 0 && strcmp(age, "0") != 0 && age_int == 0) {
-        printf("Please input a valid age.\n"); // Print an error message
-        return 1; // Return 1, which indicates an error
-    } 
-    
-    if (strlen(fname) == 0) { // If the first or last name is empty
-        printf("Please input a valid first name."); // Print an error message
-        return 1; // Return 1
-    } else if (strlen(lname) == 0) {
-        printf("Please input a valid last name."); // Print an error message
-        return 1; // Return 1
+        str_slice(fname, " "); str_slice(lname, " "); str_slice(age, " "); // Remove spaces from the name and age   
+        str_slice(fname, "\n"); str_slice(lname, "\n"); str_slice(age, "\n"); // Remove all newline characters from the name and age
+
+        int age_int = atoi(age); // Convert age from a string to an integer
+
+        // If the length of age isn't 0, or if age_int returns 0 and the inputted age isn't 0
+        if (strlen(age) == 0 && strcmp(age, "0") != 0 && age_int == 0) {
+            printf("Please input a valid age.\n"); // Print an error message
+            return 1; // Return 1, which indicates an error
+        } 
+        
+        if (strlen(fname) == 0) { // If the first or last name is empty
+            printf("Please input a valid first name."); // Print an error message
+            return 1; // Return 1
+        } else if (strlen(lname) == 0) {
+            printf("Please input a valid last name."); // Print an error message
+            return 1; // Return 1
+        }
+        
+        student new_student = add_student(fname, lname, age_int); // Create a student structure with the given data
+
+        if (new_student.id > -1) { // If the student's ID is -1 (only occurs when add_student() throws an error)
+            printf("New student created!\n");
+            printf("Name: %s %s\nAge: %d\nID: %d\n", new_student.fname, new_student.lname, new_student.age, new_student.id); // Print the student's info
+        }
+
+        printf("\n"); // Print out a newline
+
+        printf("Create another student? (Y/N, default 'N') "); // Continuation prompt
+        fgets(add_another, 5, stdin);
+        str_slice(add_another, "\n"); str_slice(add_another, " "); // Remove spaces and newlines from the response
+
+        // If the response is "y" or "yes", case-insensitive
+        if (strcasecmp(add_another, "y") == 0 || strcasecmp(add_another, "yes") == 0) {
+            continue; // Continue the loop
+        } else break; // If else, break the loop
     }
-    
-    student new_student = add_student(fname, lname, age_int); // Create a student structure with the given data
-
-    // If the student's ID is -1 (only occurs when add_student() throws an error)
-    if (new_student.id > -1) printf("Name: %s %s\nAge: %d\nID: %d", new_student.fname, new_student.lname, new_student.age, new_student.id); // Print the student's info
-    free(fname); free(lname); free(age); // Free the name and age from memory
+    printf("Exiting program...");
+    free(fname); free(lname); free(age); free(add_another); // Free the allocated memory
     return 0; // Return 0, indicating success
 }
