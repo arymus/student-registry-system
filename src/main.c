@@ -2,6 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Structure to hold student data
+typedef struct Student { // Typedef allows you to add an alias to a struct
+    char *fname; // Member
+    char *lname; // Member
+    int age; // Member
+} student; // Alias
+
 void *str_slice(char *str, const char *substr) { // Function to remove a substring from a string
     char *match; // Pointer to hold the value of strstr()
 
@@ -44,10 +51,15 @@ void *str_slice(char *str, const char *substr) { // Function to remove a substri
 int main() {
     printf("Student Registry System\n");
 
-    printf("Enter student name: ");
-    char *name = malloc(256); // Allocate 256 bytes of memory for the name
-    if (name == NULL) return 1; // If name is NULL, malloc() failed. Therefore, return 1 for error
-    fgets(name, 256, stdin); // Read 256 bytes from stdin and write it to buff
+    printf("Enter student first name: ");
+    char *fname = malloc(256); // Allocate 256 bytes of memory for the first name
+    if (fname == NULL) return 1; // If fname is NULL, malloc() failed. Therefore, return 1 for error
+    fgets(fname, 256, stdin); // Read 256 bytes from stdin and write it to fname
+
+    printf("Enter student last name: ");
+    char *lname = malloc(256); // Allocate 256 bytes of memory for the last name
+    if (lname == NULL) return 1; // Return 1 if malloc() fails
+    fgets(lname, 256, stdin); // Write the last name from stdin
 
     printf("Enter student age: ");
     char *age = malloc(256); // Allocate 256 bytes of memory for the age
@@ -59,12 +71,20 @@ int main() {
     We use this function to get the index of the newline that's appended when the user hits enter or return in stdin.
     This character is then updated to be the null terminator (because \n will always be at the end, since its triggered by the enture/return key)
     */
-    name[strcspn(name, "\n")] = '\0';
+    fname[strcspn(fname, "\n")] = '\0';
+    lname[strcspn(lname, "\n")] = '\0';
     age[strcspn(age, "\n")] = '\0';
-    str_slice(name, " "); str_slice(age, " "); // Remove spaces from the name and age (in-place modification)    
+    str_slice(fname, " "); str_slice(lname, " "); str_slice(age, " "); // Remove spaces from the name and age (in-place modification)    
 
-    printf("Name: %s\nAge: %s", name, age); // Print the name and age
+    int age_int = atoi(age); // Convert age from a string to an integer
+
+    if (age != "0" && age_int == 0) { // If the age isn't 0 but atoi() returns 0 (indicates atoi() error)
+        printf("Please input a valid age (an integer)."); // Print an error message conta
+        return 1; // Return 1, which indicates an error
+    }
     
-    free(name); free(age); // Free them both from memory
+    student student = {fname, lname, age_int}; // Create a student struct with the inputted name and age as its members
+    printf("Name: %s %s\nAge: %d", student.fname, student.lname, student.age); // Print the name and age (doubles as a check to see if the struct was initialized correctly)
+    free(fname); free(lname); free(age); // Free the name and age from memory
     return 0;
 }
