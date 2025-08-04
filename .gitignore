@@ -1,0 +1,11 @@
+# Workspace-specific configurations
+**/.vscode
+
+# All C files
+**/*.c
+
+# Exclude main.c
+!**/main.c
+
+# C output file
+**/a.out
