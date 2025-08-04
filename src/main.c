@@ -7,9 +7,12 @@ typedef struct Student { // Typedef allows you to add an alias to a struct
     char *fname; // Member
     char *lname; // Member
     int age; // Member
+    int id; // Member
 } student; // Alias
+student database[50]; // Create a database to hold an array of student structures
+int student_count = 0; // Initialize a variable to track the amount of students
 
-void *str_slice(char *str, const char *substr) { // Function to remove a substring from a string
+void str_slice(char *str, const char *substr) { // Function to remove a substring from a string
     char *match; // Pointer to hold the value of strstr()
 
     /*
@@ -48,9 +51,23 @@ void *str_slice(char *str, const char *substr) { // Function to remove a substri
     }
 }
 
+student add_student(char *fname, char *lname, int age) {
+    if (student_count >= 50) {
+        printf("Database limit reached.");
+        student new_student = {"", "", -1, -1}; // Initialize a student struct with data indicating an error
+        return new_student;
+    }
+
+    student new_student = {fname, lname, age, student_count}; // Create a student struct with the inputted name and age as its members, as well as an id number
+    database[student_count] = new_student; // Add the new student to the database
+    student_count++; // Increase the student count by 1
+    return new_student; // Return the structure's address
+}
+
 int main() {
     printf("Student Registry System\n");
 
+    // Prompts and memory allocation for stdin handling
     printf("Enter student first name: ");
     char *fname = malloc(256); // Allocate 256 bytes of memory for the first name
     if (fname == NULL) return 1; // If fname is NULL, malloc() failed. Therefore, return 1 for error
@@ -59,32 +76,38 @@ int main() {
     printf("Enter student last name: ");
     char *lname = malloc(256); // Allocate 256 bytes of memory for the last name
     if (lname == NULL) return 1; // Return 1 if malloc() fails
-    fgets(lname, 256, stdin); // Write the last name from stdin
+    fgets(lname, 256, stdin); // Write the last name from stdin to lname
 
-    printf("Enter student age: ");
+    printf("Enter student age: "); // Extra newline to seperate the prompts from the output
     char *age = malloc(256); // Allocate 256 bytes of memory for the age
     if (age == NULL) return 1; // Return 1 if malloc() fails
-    fgets(age, 256, stdin); // Write the age from stdin
+    fgets(age, 256, stdin); // Write the age from stdin to age
 
-    /*
-    Strcspn() finds a substring inside a string and returns the length of the string up to that point (the index of the character).
-    We use this function to get the index of the newline that's appended when the user hits enter or return in stdin.
-    This character is then updated to be the null terminator (because \n will always be at the end, since its triggered by the enture/return key)
-    */
-    fname[strcspn(fname, "\n")] = '\0';
-    lname[strcspn(lname, "\n")] = '\0';
-    age[strcspn(age, "\n")] = '\0';
-    str_slice(fname, " "); str_slice(lname, " "); str_slice(age, " "); // Remove spaces from the name and age (in-place modification)    
+    printf("\n"); // Print out a newline
+
+    str_slice(fname, " "); str_slice(lname, " "); str_slice(age, " "); // Remove spaces from the name and age   
+    str_slice(fname, "\n"); str_slice(lname, "\n"); str_slice(age, "\n"); // Remove all newline characters from the name and age
 
     int age_int = atoi(age); // Convert age from a string to an integer
 
-    if (age != "0" && age_int == 0) { // If the age isn't 0 but atoi() returns 0 (indicates atoi() error)
-        printf("Please input a valid age (an integer)."); // Print an error message conta
+    // If the length of age isn't 0, or if age_int returns 0 and the inputted age isn't 0
+    if (strlen(age) == 0 && strcmp(age, "0") != 0 && age_int == 0) {
+        printf("Please input a valid age.\n"); // Print an error message
         return 1; // Return 1, which indicates an error
+    } 
+    
+    if (strlen(fname) == 0) { // If the first or last name is empty
+        printf("Please input a valid first name."); // Print an error message
+        return 1; // Return 1
+    } else if (strlen(lname) == 0) {
+        printf("Please input a valid last name."); // Print an error message
+        return 1; // Return 1
     }
     
-    student student = {fname, lname, age_int}; // Create a student struct with the inputted name and age as its members
-    printf("Name: %s %s\nAge: %d", student.fname, student.lname, student.age); // Print the name and age (doubles as a check to see if the struct was initialized correctly)
+    student new_student = add_student(fname, lname, age_int); // Create a student structure with the given data
+
+    // If the student's ID is -1 (only occurs when add_student() throws an error)
+    if (new_student.id > -1) printf("Name: %s %s\nAge: %d\nID: %d", new_student.fname, new_student.lname, new_student.age, new_student.id); // Print the student's info
     free(fname); free(lname); free(age); // Free the name and age from memory
-    return 0;
+    return 0; // Return 0, indicating success
 }
