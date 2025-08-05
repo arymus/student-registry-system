@@ -10,3 +10,6 @@
 # C output files
 **/*.out
 **/*.exe
+
+# "Database" text file
+**/database.txt

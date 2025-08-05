@@ -52,13 +52,23 @@ void str_slice(char *str, const char *substr) { // Function to remove a substrin
 }
 
 student add_student(char *fname, char *lname, int age) {
-    if (student_count >= 50) {
-        printf("Database limit reached.");
+    if (student_count >= 50) { // If the student count reaches 50
+        printf("Database limit reached."); // Print an error message
         student new_student = {"", "", -1, -1}; // Initialize a student struct with data indicating an error
-        return new_student;
+        return new_student; // Return a struct with the error data
     }
-
+    
     student new_student = {fname, lname, age, student_count}; // Create a student struct with the inputted name and age as its members, as well as an id number
+
+    FILE *db_file = fopen("database.txt", "a"); // Open database.txt in append mode (adds onto the file insetead of overwriting). If the file does not exist, it is made.
+    if (db_file == NULL) { // If the database opening fails
+        printf("Database file failed to open."); // Print error message
+        exit(1); // Exit with code 1
+    };
+
+    fprintf(db_file, "%d %s %s %d", student_count, fname, lname, age); // Append student data to the database file
+    fclose(db_file); // Close the file
+
     database[student_count] = new_student; // Add the new student to the database
     student_count++; // Increase the student count by 1
     return new_student; // Return the structure's address
@@ -73,8 +83,7 @@ int main() {
     char *age = malloc(256);
     char *add_another = malloc(5); // 5 bytes because the longest answer is "yes" + \n added by enter/return key + null terminator
 
-    // While true (runs infinitely)
-    while (1) {
+    while (1) { // While true (runs infinitely)
 
         // Prompts and memory allocation for stdin handling
         printf("Enter student first name: ");
@@ -128,6 +137,7 @@ int main() {
             continue; // Continue the loop
         } else break; // If else, break the loop
     }
+
     printf("Exiting program...");
     free(fname); free(lname); free(age); free(add_another); // Free the allocated memory
     return 0; // Return 0, indicating success
