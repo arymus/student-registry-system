@@ -10,26 +10,12 @@ typedef struct Student { // Typedef allows you to add an alias to a struct
     int id; // Member
 } student; // Alias
 student database[50]; // Create a database to hold an array of student structures
-int student_count = 1; // Initialize a variable to track the amount of students (starts at 1 so the first ID is 1)
+int student_count; // Initialize a variable to track the amount of students
 
 char *char_to_str(const char character) {
     char *string = malloc(2); // Allocate 2 bytes to hold the character + null terminator
     if (string != NULL) string[0] = character; string[1] = '\0'; // Add the character and a null terminator, creating a string if malloc() is successful (not null)
     return string; // Return a pointer to the string's first item
-}
-
-char *get_input(const char *prompt, size_t n) {
-    printf("%s", prompt); // Print the prompt
-    char *buff = malloc(n); // Allocate n bytes for user input
-
-    if (buff == NULL) { // If the buffer is NULL, malloc() failed
-        printf("Failed to get input."); // Print an error message
-        return 1; // Return 1
-    }
-
-    fgets(buff, n, stdin); // Get n bytes from stdin and write it to buff
-    str_slice(buff, " "); str_slice(buff, "\n"); // Remove strings and newlines
-    return buff; // Return a pointer to the first character of buff
 }
 
 void str_slice(char *str, const char *substr) { // Function to remove a substring from a string
@@ -71,6 +57,20 @@ void str_slice(char *str, const char *substr) { // Function to remove a substrin
     }
 }
 
+char *get_input(const char *prompt, size_t n) {
+    printf("%s", prompt); // Print the prompt
+    char *buff = malloc(n); // Allocate n bytes for user input
+
+    if (buff == NULL) { // If the buffer is NULL, malloc() failed
+        printf("Failed to get input."); // Print an error message
+        return NULL; // Return NULL
+    }
+
+    fgets(buff, n, stdin); // Get n bytes from stdin and write it to buff
+    str_slice(buff, " "); str_slice(buff, "\n"); // Remove strings and newlines
+    return buff; // Return a pointer to the first character of buff
+}
+
 student add_student(char *fname, char *lname, int age) {
     if (student_count >= 50) { // If the student count reaches 50
         printf("Database limit reached."); // Print an error message
@@ -98,7 +98,7 @@ student add_student(char *fname, char *lname, int age) {
     database[student_count] = new_student; // Add the new student to the database
     student_count++; // Increase the student count by 1
 
-    free(fname); free(lname); ; // Free data from the memory (previously allocated dynamically)
+    free(fname); free(lname); // Free data from the memory (previously allocated dynamically)
     return new_student; // Return the structure's address
 }
 
@@ -109,8 +109,8 @@ student *get_student_data() {
     char *lname = get_input("Enter student last name: ", 256);
     char *age = get_input("Enter student age: ", 256);
 
-    // If fname, lname, or age is 1 (means get_input() returned 1), return NULL because get_name() only returns 1 on error
-    if (fname == 1 || lname == 1 || age == 1) return NULL; 
+    // If fname, lname, or age is NULL (means get_input() returned NULL), return NULL because get_name() only returns NULL on error
+    if (fname == NULL || lname == NULL || age == NULL) return NULL; 
 
     printf("\n"); // Print out a newline
     int age_int = atoi(age); // Convert age from a string to an integer
@@ -170,29 +170,61 @@ void print_all_data() { // Function to print data from the entire file
 
     fseek(db_file, 0L, SEEK_END); // Find the end of the file
     long file_size = ftell(db_file); // Get the file size
+    char empty_db[] = "\nYou currently have no entries in your database. Please use 2 (add a new student) in the options menu to create an entry.\n\n";
+    
+    if (file_size == 0) printf(empty_db);
 
-    if (file_size == 0) { // If the file is empty
-        printf("\nYou currently have no entries in your database. Please use 2 (add a new student) in the options menu to create an entry.\n\n");
-    }
-
+    char *student_count_str = malloc(3); // Allocate 3 bytes (can have at most 50 students, aka 2 digits + 1 null terminator) to store the student count read from the database file 
     char buff[(sizeof(student) * 50) + 1]; // Initialze a buffer that has the same amount of data as 50 students + 1 for the null terminator
     size_t bytes_read; // Number to calculate the amount of bytes read
 
-    rewind(db_file); // Move the cursor back to the start of the file so we can read it
+    rewind(db_file); // Move the file cursor to the start of the file
+    fscanf(db_file, "%[^\n]", student_count_str); // Read until a newline is hit, and store that data in student_count_str
+
+    fseek(db_file, strlen(student_count_str) + 1, SEEK_SET); // Move the cursor to the space after the student_count, skipping both count and the newline
     while ((bytes_read = fread(buff, 1, sizeof(buff) - 1, db_file)) > 0) {
-        buff[bytes_read] = '\0'; // Null terminate the buffer so that the compiler knows where to stop reading
-        printf("\n%s", buff); // Print the data
-        printf("\n"); // Print out a newline
+        if (strlen(buff) == 0 || strcmp(buff, "\n") == 0) { // If the buffer is empty or only contains a newline
+            printf(empty_db); // Print empty db warning
+        } else { // If else
+            buff[bytes_read] = '\0'; // Null terminate the buffer so that the compiler knows where to stop reading
+            printf("\n%s", buff); // Print the data
+            printf("\n"); // Print out a newline
+        }
     } fclose(db_file); // Close the database file
+    free(student_count_str); // Free student_count_str from memory 
 }
 
 int main() {
     printf("Student Registry System\n");
-    char *option = malloc(3); // Allocate 3 bytes of data (option will be 1 char + \n newline + \0 null terminator)
+    FILE *db_test = fopen("database.txt", "r"); // Open database.txt with read permission
+    if (db_test == NULL) { // If database is NULL, the file doesn't exist
+        printf("Database does not exist. Creating new database...\n");
+        student_count = 1; // Set the count of students to 1 so ID creation starts at 1 (allows us to use 0 for error checking)
+
+        FILE *db_create = fopen("database.txt", "w+"); // Open the file with read + write permissions, this time the file is crsated if it doesn't exist
+        if (db_create == NULL) {
+            printf("Database creation failed."); // Print an error message
+            return 1;
+        }
+
+        fprintf(db_create, "%d\n", student_count); // Write the student count to the file
+        fclose(db_create); // Close the file stream
+        printf("Database created successfully!\n\n"); // Print a success message
+    } else { // If else (file does exist)
+        char *external_student_count = malloc(3); // Allocate 3 bytes (can have at most 50 students, aka 2 digits + 1 null terminator) to store the student count read from the database file
+        fscanf(db_test, "%[^\n]", external_student_count); // Scan the file until a newline is encountered
+        student_count = atoi(external_student_count); // Convert the student count read in the database to an integer and assign it to student_count
     
+        if (student_count == 0) { // Student count will never be 0, but atoi() returns 0 if it fails
+            student_count = 1; // Change student count to 1
+            printf("Retrieving external student count failed. Student count set to 1."); // Print warning message
+        }
+    } fclose(db_test); // Close the file stream
+
+    char *option = malloc(3); // Allocate 3 bytes of data (option will be 1 char + \n newline + \0 null terminator)
     while (1) { // While true (runs infinitely)
-        printf("Options:\n1 > Print all student data\n2 > Add a new student\n3 > Remove a student\n4 > Find a student\n5 > End the program"); // Print commands
-        option = get_input("What do you want to do? Input 1, 2, 3, or 4: ", 3); // Get 3 byte input from the inserted prompt
+        printf("Options:\n1 > Print all student data\n2 > Add a new student\n3 > Remove a student\n4 > Find a student\n5 > End the program\n"); // Print commands
+        option = get_input("What do you want to do? Input 1, 2, 3, 4, or 5: ", 3); // Get 3 byte input from the inserted prompt
 
         if (strcmp(option, "1") == 0) print_all_data(); // If the option is 1, print all data
         else if (strcmp(option, "2") == 0) { // If the option is 2
@@ -204,20 +236,17 @@ int main() {
                 printf("Name: %s %s\nAge: %d\nID: %d\n\n", new_student->fname, new_student->lname, new_student->age, new_student->id); // Print the student's info
             }
         } else if (strcmp(option, "3") == 0) { // If the option is 3
-            printf("Removing student...");
+            printf("\nRemoving student...");
             /* Function to remove student */
-            printf("Student removed!");
+            printf("Student removed!\n\n");
         } else if (strcmp(option, "4") == 0) { // If the option is 4
             char *id_str = get_input("Student ID: ", 256); // Get 256 bytes of input for the inserted prompt
             int id = atoi(id_str); // Convert the ID to a string
 
             // If ID as an integer is 0 (can't input 0 because IDs start at 1), print an error message. If else, find the student with that ID
-            id == 0 ? printf("Please input a valid ID number.") : print_student_data(id);
+            id == 0 ? printf("\nPlease input a valid ID number.\n\n") : print_student_data(id);
         } else if (strcmp(option, "5") == 0) break; // If the option is 4 break the loop, exiting the program sucessfully
-        else { // If else
-            printf("Invalid input, please input 1, 2, 3, 4 or 5.");
-            return 1;
-        }
+        else printf("\nInvalid input, please input 1, 2, 3, 4 or 5.\n\n");
     }
 
     printf("Exiting program...");
