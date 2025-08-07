@@ -213,13 +213,14 @@ int main() {
     } else { // If else (file does exist)
         char *external_student_count = malloc(3); // Allocate 3 bytes (can have at most 50 students, aka 2 digits + 1 null terminator) to store the student count read from the database file
         fscanf(db_test, "%[^\n]", external_student_count); // Scan the file until a newline is encountered
+        fclose(db_test); // Close the file stream
         student_count = atoi(external_student_count); // Convert the student count read in the database to an integer and assign it to student_count
     
         if (student_count == 0) { // Student count will never be 0, but atoi() returns 0 if it fails
             student_count = 1; // Change student count to 1
             printf("Retrieving external student count failed. Student count set to 1."); // Print warning message
         }
-    } fclose(db_test); // Close the file stream
+    }
 
     char *option = malloc(3); // Allocate 3 bytes of data (option will be 1 char + \n newline + \0 null terminator)
     while (1) { // While true (runs infinitely)
