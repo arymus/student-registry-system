@@ -249,6 +249,7 @@ int main() {
         else printf("\nInvalid input, please input 1, 2, 3, 4 or 5.\n\n");
     }
 
+    free(option); // Free the option from memory
     printf("Exiting program...");
     return 0; // Return 0, indicating success
 }
