@@ -182,9 +182,10 @@ void print_all_data() { // Function to print data from the entire file
     fscanf(db_file, "%[^\n]", student_count_str); // Read until a newline is hit, and store that data in student_count_str
 
     fseek(db_file, strlen(student_count_str) + 1, SEEK_SET); // Move the cursor to the space after the student_count, skipping both count and the newline
-    while ((bytes_read = fread(buff, 1, sizeof(buff) - 1, db_file)) > 0) {
+    while ((bytes_read = fread(buff, 1, sizeof(buff) - 1, db_file)) >= 0) {
         if (strlen(buff) == 0 || strcmp(buff, "\n") == 0) { // If the buffer is empty or only contains a newline
             printf(empty_db); // Print empty db warning
+            break; // Break the loop
         } else { // If else
             buff[bytes_read] = '\0'; // Null terminate the buffer so that the compiler knows where to stop reading
             printf("\n%s", buff); // Print the data
