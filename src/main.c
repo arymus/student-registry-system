@@ -143,7 +143,10 @@ void print_student_data(int id) {
 
     if (stu.id == 0) { // If the student's ID isn't found in the program-scoped database (global structs have all their members set to 0 on initialization)
         FILE *db_file = fopen("database.txt", "a+"); // Open database.txt in read & append mode. If the file does not exist, it is made.
-        if (db_file == NULL) printf("Database file failed to open."); // If the database opening fails, print error message
+        if (db_file == NULL) {
+            printf("Database file failed to open."); // If the database opening fails, print error message
+            return; // End the function
+        }
 
         char buff[sizeof(student) + 5]; // Get the size of a student struct, an extra 4 bytes for spaces, and one more for the null terminator
         char *first_item_str = char_to_str(buff[0]); // Make the first item from a buffer into a string
@@ -172,25 +175,29 @@ void print_all_data() { // Function to print data from the entire file
     long file_size = ftell(db_file); // Get the file size
     char empty_db[] = "\nYou currently have no entries in your database. Please use 2 (add a new student) in the options menu to create an entry.\n\n";
     
-    if (file_size == 0) printf(empty_db);
+    if (file_size == 0) printf("%s", empty_db);
 
     char *student_count_str = malloc(3); // Allocate 3 bytes (can have at most 50 students, aka 2 digits + 1 null terminator) to store the student count read from the database file 
     char buff[(sizeof(student) * 50) + 1]; // Initialze a buffer that has the same amount of data as 50 students + 1 for the null terminator
-    size_t bytes_read; // Number to calculate the amount of bytes read
 
     rewind(db_file); // Move the file cursor to the start of the file
     fscanf(db_file, "%[^\n]", student_count_str); // Read until a newline is hit, and store that data in student_count_str
-
     fseek(db_file, strlen(student_count_str) + 1, SEEK_SET); // Move the cursor to the space after the student_count, skipping both count and the newline
-    while ((bytes_read = fread(buff, 1, sizeof(buff) - 1, db_file)) >= 0) {
-        if (strlen(buff) == 0 || strcmp(buff, "\n") == 0) { // If the buffer is empty or only contains a newline
-            printf(empty_db); // Print empty db warning
-            break; // Break the loop
-        } else { // If else
-            buff[bytes_read] = '\0'; // Null terminate the buffer so that the compiler knows where to stop reading
-            printf("\n%s", buff); // Print the data
-            printf("\n"); // Print out a newline
-        }
+
+    /*
+    fread() is a function that reads an amount of bytes from a file and returns the number of elements that are successfully read.
+    Here, we write sizeof(buff) - 1 bytes (50 students worth of data) to buff from db_file, defining each item's size as 1
+    */
+    size_t bytes_read = fread(buff, 1, sizeof(buff) - 1, db_file); // Number to calculate the amount of bytes read
+
+    buff[bytes_read] = '\0'; // Null terminate the buffer so that the compiler knows where to stop reading
+    if (bytes_read == 0) printf("%s", empty_db);
+    else { // If the bytes read isn't 0 (there's data to be read)
+
+        fseek(db_file, strlen(student_count_str) + 1, SEEK_SET); // Move the cursor back to where it started
+
+        // fread() automatically progresses the cursor, so it has to run in a while loop until it returns 0, indicating the end of the file
+        while ((bytes_read = fread(buff, 1, sizeof(buff) - 1, db_file)) > 0) printf("\n%s\n", buff); // Print the data        
     } fclose(db_file); // Close the database file
     free(student_count_str); // Free student_count_str from memory 
 }
