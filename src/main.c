@@ -71,10 +71,43 @@ char *get_input(const char *prompt, size_t n) {
     return buff; // Return a pointer to the first character of buff
 }
 
+void update_external_student_count() {
+    FILE *db_file = fopen("database.txt", "r"); // Open the database file with read permissions
+    if (db_file == NULL) return; // If db_copy is NULL, end the function (NULL means the fopen() had an error)
+
+    char student_count_str[3]; // Initialize a string to store a 2-digit number at most + 1 null terminator
+    if (fgets(student_count_str, sizeof(student_count_str), db_file) == NULL) {
+        fclose(db_file); // Close the file stream to db_file
+        return; // End the function
+    }
+
+    char buff[(sizeof(student) * 50) + 1]; // Large enough buffer for up to 50 students + null terminator
+    size_t offset = 0; // Initialize a number to store the number of bytes off from the cursor's current location
+    size_t bytes_read; // Initialize a number to store the number of bytes read from the file into buff
+
+    /*
+    Constantly get sizeof(buff) - offset bytes (the remaining space left in buff) from db_file,
+    and write it to buff + offset, which is just buff[current index + offset].
+    This happens until fgets() returns NULL, indicating the end of the file.
+    */
+    while (fgets(buff + offset, sizeof(buff) - offset, db_file) != NULL) {
+        offset = strlen(buff); // Update offset
+    } fclose(db_file); // Close the file stream to the database file
+
+    FILE *db_copy = fopen("db_copy.txt", "w"); // Open db_copy with write permissions
+    if (db_copy == NULL) return; // If db_copy is NULL, end the function (NULL means the fopen() had an error)
+
+    fprintf(db_copy, "%d\n%s", student_count, buff); // Write new count and old data
+    fclose(db_copy); // Close the file stream to the database copy
+
+    // Remove the original database file and rename the copy to database.txt (returns 0 on error)
+    if (remove("database.txt") != 0 || rename("db_copy.txt", "database.txt") != 0) printf("File update failed"); // Print error
+}
+
 student add_student(char *fname, char *lname, int age) {
     if (student_count >= 50) { // If the student count reaches 50
         printf("Database limit reached."); // Print an error message
-        student new_student = {"", "", -1, -1}; // Initialize a student struct with data indicating an error
+        student new_student = {"", "", 0, 0}; // Initialize a student struct with data indicating an error
         return new_student; // Return a struct with the error data
     }
     
@@ -83,6 +116,7 @@ student add_student(char *fname, char *lname, int age) {
     // Assign values. The reason we make duplicates of fname and lname is so that we can transfer ownership of the values to the structure, because we want to free the previously allocated memory containing the values
     new_student.fname = strdup(fname); // Create a duplicate of fname to store in the object
     new_student.lname = strdup(lname); // Create a duplicate of lname to store in the object
+    free(fname); free(lname); // Free data from the memory (previously allocated dynamically)
     new_student.age = age;
     new_student.id = student_count;
 
@@ -92,13 +126,13 @@ student add_student(char *fname, char *lname, int age) {
         exit(1); // Exit with code 1
     };
 
-    fprintf(db_file, "%d %s %s %d\n", student_count, fname, lname, age); // Append student data to the database file
+    fprintf(db_file, "%d %s %s %d\n", student_count, new_student.fname, new_student.lname, new_student.age); // Append student data to the database file
+    fflush(db_file); // Automatically add contents to db_file instead of holding it in a buffer
     fclose(db_file); // Close the file
 
     database[student_count] = new_student; // Add the new student to the database
     student_count++; // Increase the student count by 1
-
-    free(fname); free(lname); // Free data from the memory (previously allocated dynamically)
+    update_external_student_count(); // Update the student count in the database file
     return new_student; // Return the structure's address
 }
 
@@ -138,33 +172,8 @@ student *get_student_data() {
 }
 
 void print_student_data(int id) {
-    student stu = database[id]; // Get the student id from the database
-    int stu_found = 0; // Integer telling whether the student is found, 0 is false and 1 is true
-
-    if (stu.id == 0) { // If the student's ID isn't found in the program-scoped database (global structs have all their members set to 0 on initialization)
-        FILE *db_file = fopen("database.txt", "a+"); // Open database.txt in read & append mode. If the file does not exist, it is made.
-        if (db_file == NULL) {
-            printf("Database file failed to open."); // If the database opening fails, print error message
-            return; // End the function
-        }
-
-        char buff[sizeof(student) + 5]; // Get the size of a student struct, an extra 4 bytes for spaces, and one more for the null terminator
-        char *first_item_str = char_to_str(buff[0]); // Make the first item from a buffer into a string
-        while (fgets(buff, sizeof(buff), db_file)) {
-            buff[strlen(buff) + 1] = '\0'; // Manually assign a null terminator at the end of the string
-
-            // If the first item (as an integer) is the id
-            if (atoi(first_item_str) == id) {
-                free(first_item_str); // Free the memory char_to_str() dynamically allocates to create the string
-                printf("%s", buff); // Print the data
-            } else { // If else
-                printf("ID was not found in the database."); // Print error msg
-                stu_found = 1; // Change stu_found to 1, indicating truthy
-            }
-        } fclose(db_file); // Close the file stream
-    }
-
-    if (stu_found == 1) printf("%s, %s: Age %d, ID %d", stu.lname, stu.fname, stu.age, stu.id); // If the student is found, print the data
+    FILE *db_file = fopen("database.txt", "r"); // Open database.txt with read permissions
+    fclose(db_file); // Close the file stream to db_file
 }
 
 void print_all_data() { // Function to print data from the entire file
@@ -209,21 +218,22 @@ int main() {
         printf("Database does not exist. Creating new database...\n");
         student_count = 1; // Set the count of students to 1 so ID creation starts at 1 (allows us to use 0 for error checking)
 
-        FILE *db_create = fopen("database.txt", "w+"); // Open the file with read + write permissions, this time the file is crsated if it doesn't exist
-        if (db_create == NULL) {
+        FILE *db_file = fopen("database.txt", "w+"); // Open the file with read + write permissions, this time the file is created if it doesn't exist
+        if (db_file == NULL) {
             printf("Database creation failed."); // Print an error message
             return 1;
         }
 
-        fprintf(db_create, "%d\n", student_count); // Write the student count to the file
-        fclose(db_create); // Close the file stream
+        fprintf(db_file, "%d\n", student_count); // Write the student count to the file
+        fclose(db_file); // Close the file stream
         printf("Database created successfully!\n\n"); // Print a success message
     } else { // If else (file does exist)
         char *external_student_count = malloc(3); // Allocate 3 bytes (can have at most 50 students, aka 2 digits + 1 null terminator) to store the student count read from the database file
         fscanf(db_test, "%[^\n]", external_student_count); // Scan the file until a newline is encountered
         fclose(db_test); // Close the file stream
         student_count = atoi(external_student_count); // Convert the student count read in the database to an integer and assign it to student_count
-    
+        printf("Student count: %d\n", student_count - 1); // Subtract 1 b/c the database stores the student count + 1 so the program can start the ID assignment as the next number after the student count
+
         if (student_count == 0) { // Student count will never be 0, but atoi() returns 0 if it fails
             student_count = 1; // Change student count to 1
             printf("Retrieving external student count failed. Student count set to 1."); // Print warning message
@@ -237,16 +247,17 @@ int main() {
 
         if (strcmp(option, "1") == 0) print_all_data(); // If the option is 1, print all data
         else if (strcmp(option, "2") == 0) { // If the option is 2
-            student *new_student = get_student_data();
+            student *new_student = get_student_data(); // Take input for student data and add it to the database
             if (new_student == NULL) return 1; // If new_student is 1, there was an error. Therefore, return 1 to indicate error
             
-            if (new_student->id > -1) { // If the student's ID is -1 (only occurs when add_student() throws an error)
+            if (new_student->id != 0) { // If the student's ID is NOT 0 (only occurs when add_student() throws an error)
                 printf("New student created!\n");
                 printf("Name: %s %s\nAge: %d\nID: %d\n\n", new_student->fname, new_student->lname, new_student->age, new_student->id); // Print the student's info
             }
         } else if (strcmp(option, "3") == 0) { // If the option is 3
-            printf("\nRemoving student...");
+            printf("\nRemoving student...\n");
             /* Function to remove student */
+            update_external_student_count(); // Update the student count in the database file
             printf("Student removed!\n\n");
         } else if (strcmp(option, "4") == 0) { // If the option is 4
             char *id_str = get_input("Student ID: ", 256); // Get 256 bytes of input for the inserted prompt
